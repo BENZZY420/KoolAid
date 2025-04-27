@@ -1,4 +1,14 @@
-local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+local Notification
+-- Ensure Notification is loaded correctly
+local success, err = pcall(function()
+    Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+end)
+
+if not success then
+    warn("Failed to load Notification: " .. err)
+    return  -- Stop script execution if Notification failed to load
+end
+
 local Players, ReplicatedStorage, LocalPlayer = game:GetService("Players"), game:GetService("ReplicatedStorage"), game.Players.LocalPlayer
 local ExoticShopRemote, ExoticStock = ReplicatedStorage:WaitForChild("ExoticShopRemote"), ReplicatedStorage:WaitForChild("ExoticStock")
 
@@ -32,6 +42,8 @@ local ShopItems = {
     ["Ice-Fruit Bag"] = 2500, ["Ice-Fruit Cupz"] = 150, ["FijiWater"] = 48, ["FreshWater"] = 48
 }
 
+local lastPurchaseTimes = {}  -- Track the last purchase time for each item
+
 local function ListItems()
     for _, child in ipairs(Holder:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
     for name, price in pairs(ShopItems) do
@@ -46,34 +58,55 @@ local function ListItems()
         BuyButton.Size, BuyButton.Position, BuyButton.Text, BuyButton.BackgroundColor3, BuyButton.TextColor3, BuyButton.Font, BuyButton.TextScaled = UDim2.fromScale(0.45, 1), UDim2.fromScale(0.54, 0.3), "Buy ($" .. price .. ")", Color3.fromRGB(0, 100, 0), Color3.new(1, 1, 1), Enum.Font.SourceSansBold, true  -- Adjusted position for spacing
 
         BuyButton.MouseButton1Click:Connect(function()
+            local currentTime = tick()
+
+            -- Check if the user tried to buy the item again within 1 second
+            if lastPurchaseTimes[name] and currentTime - lastPurchaseTimes[name] < 1 then
+                -- Prevent the purchase if it's attempted too soon (within 1 second)
+                return
+            end
+            
+            -- Update the last purchase time for this item
+            lastPurchaseTimes[name] = currentTime
+
             local itemObj = ExoticStock:FindFirstChild(name)
             local success, message = pcall(function() return ExoticShopRemote:InvokeServer(name) end)
             if itemObj and itemObj.Value > 0 then
-                Notification:Notify({Title = success and "Purchase Complete" or "Error", Description = success and "You bought " .. name or message}, {OutlineColor = success and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0), Time = success and 3 or 5, Type = "default"})
+                if Notification then
+                    Notification:Notify({Title = success and "Purchase Complete" or "Error", Description = success and "You bought " .. name or message}, {OutlineColor = success and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0), Time = success and 3 or 5, Type = "default"})
+                end
             else
                 -- Display custom notification for out of stock items
-                Notification:Notify({Title = "Out of Stock", Description = name .. " is out of stock!"}, {OutlineColor = Color3.fromRGB(200, 0, 0), Time = 5, Type = "default"})
-
-                -- Hook into RenderStepped to check all TextLabels and TextButtons in PlayerGui and remove default pop-up
-                game:GetService("RunService").RenderStepped:Connect(function()
-                    for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
-                        if gui:IsA("ScreenGui") then
-                            for _, obj in pairs(gui:GetDescendants()) do
-                                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                                    local text = obj.Text:gsub("%s+", " "):lower()
-                                    -- Check if the message is "This item is out of stock." and remove it
-                                    if text:match("this item is out of stock.") then
-                                        obj:Destroy()  -- Destroy the element if the message matches
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
+                if Notification then
+                    Notification:Notify({Title = "Out of Stock", Description = name .. " is out of stock!"}, {OutlineColor = Color3.fromRGB(200, 0, 0), Time = 5, Type = "default"})
+                end
             end
         end)
     end
 end
+
+-- Hook into RenderStepped to remove both "Out of Stock" and "Please wait at least 1s before buying again" messages
+game:GetService("RunService").RenderStepped:Connect(function()
+    for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            for _, obj in pairs(gui:GetDescendants()) do
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    local text = obj.Text:gsub("%s+", " "):lower()
+
+                    -- Check if the message is "This item is out of stock." and remove it
+                    if text:match("this item is out of stock.") then
+                        obj:Destroy()  -- Destroy the element if the message matches
+                    end
+
+                    -- Check if the message is "Please wait at least 1s before buying again" and remove it
+                    if text:match("please wait at least 1s before buying again") then
+                        obj:Destroy()  -- Destroy the element if the message matches
+                    end
+                end
+            end
+        end
+    end
+end)
 
 ScreenGui.Enabled = true
 ListItems()
