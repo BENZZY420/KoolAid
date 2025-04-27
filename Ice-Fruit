@@ -62,8 +62,11 @@ local function ListItems()
 
             -- Check if the user tried to buy the item again within 1 second
             if lastPurchaseTimes[name] and currentTime - lastPurchaseTimes[name] < 1 then
-                -- Prevent the purchase if it's attempted too soon (within 1 second)
-                return
+                -- Notify the user that they need to wait due to cooldown
+                if Notification then
+                    Notification:Notify({Title = "Cooldown", Description = "Please wait before trying again."}, {OutlineColor = Color3.fromRGB(200, 100, 0), Time = 1.5, Type = "default"})
+                end
+                return  -- Prevent the purchase if it's attempted too soon (within 1 second)
             end
             
             -- Update the last purchase time for this item
@@ -73,12 +76,12 @@ local function ListItems()
             local success, message = pcall(function() return ExoticShopRemote:InvokeServer(name) end)
             if itemObj and itemObj.Value > 0 then
                 if Notification then
-                    Notification:Notify({Title = success and "Purchase Complete" or "Error", Description = success and "You bought " .. name or message}, {OutlineColor = success and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0), Time = success and 3 or 5, Type = "default"})
+                    Notification:Notify({Title = success and "Purchase Complete" or "Error", Description = success and "You bought " .. name or message}, {OutlineColor = success and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0), Time = 1.5, Type = "default"})
                 end
             else
                 -- Display custom notification for out of stock items
                 if Notification then
-                    Notification:Notify({Title = "Out of Stock", Description = name .. " is out of stock!"}, {OutlineColor = Color3.fromRGB(200, 0, 0), Time = 5, Type = "default"})
+                    Notification:Notify({Title = "Out of Stock", Description = name .. " is out of stock!"}, {OutlineColor = Color3.fromRGB(200, 0, 0), Time = 1.5, Type = "default"})
                 end
             end
         end)
