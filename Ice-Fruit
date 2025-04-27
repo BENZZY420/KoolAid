@@ -1,0 +1,61 @@
+local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+local Players, ReplicatedStorage, LocalPlayer = game:GetService("Players"), game:GetService("ReplicatedStorage"), game.Players.LocalPlayer
+local ExoticShopRemote, ExoticStock = ReplicatedStorage:WaitForChild("ExoticShopRemote"), ReplicatedStorage:WaitForChild("ExoticStock")
+
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size, Frame.Position, Frame.BackgroundColor3 = UDim2.fromScale(0.14, 0.14), UDim2.fromScale(0.82, 0.05), Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 0
+
+local Topbar = Instance.new("Frame", Frame)
+Topbar.Size, Topbar.BackgroundColor3 = UDim2.fromScale(1, 0.15), Color3.fromRGB(45, 45, 45)
+
+local ShopTitle = Instance.new("TextLabel", Topbar)
+ShopTitle.Size, ShopTitle.Text, ShopTitle.TextColor3, ShopTitle.Font, ShopTitle.TextSize, ShopTitle.TextScaled, ShopTitle.BackgroundTransparency = UDim2.fromScale(0.8, 1), "Farming Shop", Color3.new(1, 1, 1), Enum.Font.SourceSansBold, 20, true, 1
+
+-- Add the 'X' button to close the shop UI
+local CloseButton = Instance.new("TextButton", Topbar)
+CloseButton.Size, CloseButton.Position, CloseButton.Text, CloseButton.BackgroundColor3, CloseButton.TextColor3, CloseButton.Font, CloseButton.TextSize, CloseButton.TextScaled = UDim2.fromScale(0.15, 1), UDim2.fromScale(0.85, 0), "X", Color3.fromRGB(255, 0, 0), Color3.new(1, 1, 1), Enum.Font.SourceSansBold, 24, true
+CloseButton.BorderSizePixel = 0
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui.Enabled = false  -- This will hide the entire ScreenGui when the button is clicked
+end)
+
+local Holder = Instance.new("Frame", Frame)
+Holder.Size, Holder.Position, Holder.BackgroundTransparency = UDim2.fromScale(1, 0.85), UDim2.fromScale(0, 0.15), 1
+
+local UIListLayout = Instance.new("UIListLayout", Holder)
+UIListLayout.FillDirection, UIListLayout.SortOrder, UIListLayout.Padding = Enum.FillDirection.Vertical, Enum.SortOrder.LayoutOrder, UDim.new(0, 5)  -- Increased padding to create more space between items
+
+local ShopItems = {
+    ["Ice-Fruit Bag"] = 2500, ["Ice-Fruit Cupz"] = 150, ["FijiWater"] = 48, ["FreshWater"] = 48
+}
+
+local function ListItems()
+    for _, child in ipairs(Holder:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
+    for name, price in pairs(ShopItems) do
+        local ItemFrame = Instance.new("Frame", Holder)
+        ItemFrame.Size, ItemFrame.BackgroundTransparency = UDim2.fromScale(1, 0.18), 1
+
+        local ItemName = Instance.new("TextLabel", ItemFrame)
+        ItemName.Size, ItemName.Text, ItemName.TextColor3, ItemName.Font, ItemName.TextScaled, ItemName.BackgroundTransparency = UDim2.fromScale(0.48, 1), name, Color3.new(1, 1, 1), Enum.Font.SourceSans, true, 1
+        ItemName.Position = UDim2.fromScale(0, 0.1)  -- Adjusted position for spacing
+
+        local BuyButton = Instance.new("TextButton", ItemFrame)
+        BuyButton.Size, BuyButton.Position, BuyButton.Text, BuyButton.BackgroundColor3, BuyButton.TextColor3, BuyButton.Font, BuyButton.TextScaled = UDim2.fromScale(0.45, 1), UDim2.fromScale(0.54, 0.3), "Buy ($" .. price .. ")", Color3.fromRGB(0, 100, 0), Color3.new(1, 1, 1), Enum.Font.SourceSansBold, true  -- Adjusted position for spacing
+
+        BuyButton.MouseButton1Click:Connect(function()
+            local itemObj = ExoticStock:FindFirstChild(name)
+            local success, message = pcall(function() return ExoticShopRemote:InvokeServer(name) end)
+            if itemObj and itemObj.Value > 0 then
+                Notification:Notify({Title = success and "Purchase Complete" or "Error", Description = success and "You bought " .. name or message}, {OutlineColor = success and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0), Time = success and 3 or 5, Type = "default"})
+            else
+                Notification:Notify({Title = "Out of Stock", Description = name .. " is out of stock!"}, {OutlineColor = Color3.fromRGB(200, 0, 0), Time = 5, Type = "default"})
+            end
+        end)
+    end
+end
+
+ScreenGui.Enabled = true
+ListItems()
