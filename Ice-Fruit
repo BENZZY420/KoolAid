@@ -51,7 +51,25 @@ local function ListItems()
             if itemObj and itemObj.Value > 0 then
                 Notification:Notify({Title = success and "Purchase Complete" or "Error", Description = success and "You bought " .. name or message}, {OutlineColor = success and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0), Time = success and 3 or 5, Type = "default"})
             else
+                -- Display custom notification for out of stock items
                 Notification:Notify({Title = "Out of Stock", Description = name .. " is out of stock!"}, {OutlineColor = Color3.fromRGB(200, 0, 0), Time = 5, Type = "default"})
+
+                -- Hook into RenderStepped to check all TextLabels and TextButtons in PlayerGui and remove default pop-up
+                game:GetService("RunService").RenderStepped:Connect(function()
+                    for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
+                        if gui:IsA("ScreenGui") then
+                            for _, obj in pairs(gui:GetDescendants()) do
+                                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                                    local text = obj.Text:gsub("%s+", " "):lower()
+                                    -- Check if the message is "This item is out of stock." and remove it
+                                    if text:match("this item is out of stock.") then
+                                        obj:Destroy()  -- Destroy the element if the message matches
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
             end
         end)
     end
